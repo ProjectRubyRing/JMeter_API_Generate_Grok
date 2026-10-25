@@ -1,0 +1,4 @@
+JMX 差分更新: C:\Users\taka_\Grok\JMeter_API_Generate_Grok\tests\_update\openapi\py\sample-api.jmx
+定義: C:\Users\taka_\Grok\JMeter_API_Generate_Grok\tests\_update\sample_api.json
+
+差分はありません。JMX は更新しません。

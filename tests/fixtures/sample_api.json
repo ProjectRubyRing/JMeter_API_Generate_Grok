@@ -1,0 +1,119 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "sample-api", "version": "1.2.0" },
+  "servers": [
+    { "url": "http://localhost:8080/v1" },
+    { "url": "http://ignored.example" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyHeader": { "type": "apiKey", "in": "header", "name": "X-API-KEY" },
+      "ApiKeyQuery": { "type": "apiKey", "in": "query", "name": "api_key" }
+    },
+    "schemas": {
+      "Pet": {
+        "allOf": [
+          { "type": "object", "properties": { "id": { "type": "integer", "example": 7 } } },
+          { "type": "object", "required": ["name"], "properties": { "name": { "type": "string", "example": "n" } } }
+        ]
+      }
+    },
+    "parameters": {
+      "Limit": { "name": "limit", "in": "query", "schema": { "type": "integer", "example": 10 } }
+    }
+  },
+  "security": [{ "ApiKeyHeader": [] }],
+  "paths": {
+    "/pets": {
+      "post": {
+        "operationId": "createPet",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Pet" } } }
+        },
+        "responses": {
+          "201": { "description": "created", "content": { "application/json": { "schema": { "type": "object" } } } }
+        }
+      }
+    },
+    "/pets/{petId}": {
+      "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+      "get": {
+        "operationId": "showPet",
+        "parameters": [
+          { "name": "petId", "in": "path", "required": true, "schema": { "type": "string", "example": "a/b" } },
+          { "name": "tags", "in": "query", "style": "spaceDelimited", "explode": false, "schema": { "type": "array", "items": { "type": "string" }, "example": ["red", "blue"] } },
+          { "name": "filter", "in": "query", "style": "deepObject", "explode": true, "schema": { "type": "object", "example": { "name": "x y" }, "properties": { "name": { "type": "string" } } } },
+          { "name": "session", "in": "cookie", "schema": { "type": "string", "example": "abc" } },
+          { "name": "X-Trace", "in": "header", "schema": { "type": "string", "example": "trace-1" } }
+        ],
+        "responses": {
+          "200": { "description": "ok", "content": { "application/xml": { "schema": { "type": "string" } } } }
+        }
+      }
+    },
+    "/files": {
+      "servers": [{ "url": "https://files.example.com:8443/upload" }],
+      "post": {
+        "operationId": "upload",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "type": "object", "required": ["title"], "properties": { "title": { "type": "string", "example": "a b" } } }
+            }
+          }
+        },
+        "responses": { "201": { "description": "created" } }
+      }
+    },
+    "/echo": {
+      "put": {
+        "operationId": "echoXml",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/xml": {
+              "schema": {
+                "type": "object",
+                "xml": { "name": "root" },
+                "properties": { "a": { "type": "string", "example": "z" } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/matrix{color}": {
+      "get": {
+        "operationId": "byColor",
+        "security": [{ "ApiKeyQuery": [] }],
+        "parameters": [
+          { "name": "color", "in": "path", "required": true, "style": "matrix", "schema": { "type": "string", "example": "blue" } }
+        ],
+        "responses": { "204": { "description": "no content" } }
+      }
+    },
+    "/label{sku}": {
+      "head": {
+        "operationId": "headSku",
+        "parameters": [
+          { "name": "sku", "in": "path", "required": true, "style": "label", "schema": { "type": "string", "example": "A1" } },
+          { "name": "q", "in": "query", "schema": { "type": "string", "example": "k v" } }
+        ],
+        "responses": { "200": { "description": "ok" } }
+      }
+    },
+    "/optional": {
+      "post": {
+        "operationId": "optionalBody",
+        "requestBody": {
+          "required": false,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "a": { "type": "string", "example": "b" } } } } }
+        },
+        "responses": { "200": { "description": "ok" } }
+      }
+    }
+  }
+}

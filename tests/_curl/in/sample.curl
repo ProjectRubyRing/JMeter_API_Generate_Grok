@@ -1,0 +1,33 @@
+# login
+curl -sS --connect-timeout 2.5 --max-time 9 -X POST "https://api.example.com/v1/login" \
+  -H "Content-Type: application/json" \
+  -H "X-Request-Id: abc" \
+  --data-raw "{\"user\":\"taro\",\"pass\":\"secret\"}"
+
+curl "https://api.example.com/v1/items?page=1&size=2"
+
+curl -L -G "https://api.example.com/v1/search" \
+  --data-urlencode "q=a b" \
+  -H "Authorization: Bearer TOKEN" \
+  -A "demo-agent"
+
+curl -k -u "user:p@ss" https://api.example.com/v1/me
+
+curl -X POST https://api.example.com/v1/form -d "a=1&b=2"
+
+curl -X POST https://api.example.com/v1/raw -d "hello world"
+
+curl.exe -X PUT "https://api.example.com/v1/item" -H "Content-Type: application/json" -d "{\"id\":1}"
+
+curl -F "title=hello" -F "file=@curl_note.txt" https://api.example.com/v1/upload --next -X DELETE https://api.example.com/v1/items/9
+
+curl --json @curl_body.json https://api.example.com/v1/fromfile
+
+curl https://api.example.com/a https://api.example.com/b
+
+curl -X GET ^
+  "https://api.example.com/v1/caret"
+curl `
+  -X GET `
+  https://api.example.com/v1/tick
+FOO=bar curl https://api.example.com/v1/envassign

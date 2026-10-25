@@ -1,0 +1,246 @@
+JMeter CLI 実行手順（Linux）
+対象: Apache JMeter 5.6.3
+JMX: sample-api.jmx
+このファイルは jmeter_api_tool が生成した。JMX を Linux サーバへコピーし、JMeter の CLI（非GUI）で実行するときのコマンドと、各パラメータの説明である。
+サーバに jmeter_api_tool.sh が無くても、Java と JMeter 5.6.3 があれば実行できる。
+
+===== 1. サーバへ持っていくファイル =====
+JMX のあるフォルダを基準に、相対パスが崩れないようにコピーする。
+- sample-api.jmx
+- sample-api_cli.txt（この手順書。実行には不要）
+- data/testdata.csv（CSV データ。JMX からの相対パスのまま置く）
+- data/testdata.xlsx（Excel データ。JMX からの相対パスのまま置く）
+
+===== 2. サーバの前提 =====
+- Java 8 以上（17 を推奨）
+- Apache JMeter 5.6.3（bin/jmeter があること）
+- 環境変数 JMETER_HOME に、その JMeter のフォルダを設定する
+- 実行ユーザーが JMX・データファイル・結果フォルダを読み書きできること
+
+===== 3. 実行コマンド =====
+JMX と同じフォルダで実行する。JMETER_HOME はインストール先に合わせて書き換える。
+----- ここから -----
+export JMETER_HOME=/opt/apache-jmeter-5.6.3
+export HEAP="-Xms1g -Xmx1g -XX:MaxMetaspaceSize=256m"
+RUN_DIR="result/sample-api_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$RUN_DIR"
+"$JMETER_HOME/bin/jmeter" \
+  -n \
+  -t \
+  "sample-api.jmx" \
+  -l \
+  "$RUN_DIR/result.jtl" \
+  -j \
+  "$RUN_DIR/jmeter.log" \
+  -e \
+  -o \
+  "$RUN_DIR/report" \
+  "-JRESULT_DIR=$RUN_DIR" \
+  -Jjmeter.save.saveservice.subresults=false \
+  -JPROTOCOL=http \
+  -JHOST=localhost \
+  -JPORT=8080 \
+  -JPROTOCOL_2=https \
+  -JHOST_2=files.example.com \
+  -JPORT_2=8443 \
+  -JTHREADS=1 \
+  -JRAMP_UP=1 \
+  -JLOOPS=1 \
+  -JCONNECT_TIMEOUT=10000 \
+  -JRESPONSE_TIMEOUT=30000 \
+  -JCSV_FILE=data/testdata.csv \
+  -JEXCEL_FILE=data/testdata.xlsx \
+  -JEXCEL_SHEET= \
+  -JLOG_RESPONSE=error \
+  -JLOG_MAX_CHARS=1000 \
+  -JTHROUGHPUT=600
+----- ここまで -----
+
+===== 4. パラメータの説明 =====
+
+[環境変数]
+JMETER_HOME
+  JMeter を展開したフォルダ。直下に bin/jmeter があること。例: /opt/apache-jmeter-5.6.3
+HEAP
+  JVM のヒープ。既定は 1g。OutOfMemoryError になる場合は 2g などに増やす。
+  例: export HEAP="-Xms2g -Xmx2g -XX:MaxMetaspaceSize=256m"
+RUN_DIR
+  この実行の結果をまとめるフォルダ。日時入りの名前を付け、HTML レポートの出力先が既に存在して失敗しないようにしている。
+
+[jmeter コマンドのオプション]
+-n
+  非GUI（CLI）モードで実行する。負荷試験は GUI では行わず、このモードで実行する。
+
+-t "sample-api.jmx"
+  実行するテスト計画（JMX）。このコマンドは JMX と同じフォルダで実行する前提で、ファイル名だけを指定している。別のフォルダから実行する場合は絶対パスにする。
+
+-l "$RUN_DIR/result.jtl"
+  全サンプルの結果を書く JTL（CSV）。後から HTML レポートを作り直すときにも使う。
+
+-j "$RUN_DIR/jmeter.log"
+  JMeter 本体のログ。起動失敗やエラーの詳細はここを見る。
+
+-e
+  テスト終了後に HTML レポート（ダッシュボード）を生成する。-o とセットで指定する。
+
+-o "$RUN_DIR/report"
+  HTML レポートの出力先。存在してはいけない。このコマンドは実行のたびに新しい RUN_DIR を作るので、report フォルダは空のまま渡せる。
+
+-Jjmeter.save.saveservice.subresults=false
+  下位のサンプル（サブ結果）を JTL に書かない。HTML レポートの件数を API リクエスト単位にするための指定で、このツールの run コマンドと同じ。
+
+[-J プロパティ]
+形式は -J名前=値。JMX 内の ${__P(名前,既定値)} を上書きする。コマンドに書かないプロパティは、JMX に埋め込まれた既定値が使われる。
+値に空白や記号がある場合は、シェルに解釈されないよう引用符で囲む。
+
+-JRESULT_DIR=$RUN_DIR
+  結果フォルダ。結果ログ（api_result.log）と、JMX 内の JTL 出力のフォルダ。このコマンドでは実行のたびに作る RUN_DIR を渡す。~/ で始めると JMX のあるフォルダからの相対パスになる（例: ~/result）。空の相対パスは、実行したときのカレントフォルダが基準になる。
+  このコマンドでの値: $RUN_DIR（実行時に展開される）
+
+-JPROTOCOL=http
+  プロトコル。スキーム。http または https。既定は生成時の URL。-JPROTOCOL=https のように上書きする。
+  このコマンドでの値: http
+
+-JHOST=localhost
+  ホスト。接続先のホスト名。ステージングへ切り替える例: -JHOST=stg.example.com
+  このコマンドでの値: localhost
+
+-JPORT=8080
+  ポート。ポート番号。空欄は URL にポートが無いという意味で、http は 80、https は 443 になる。番号を付ける例: -JPORT=8443
+  このコマンドでの値: 8080
+
+-JPROTOCOL_2=https
+  プロトコル（2 番目の接続先）。スキーム。http または https。既定は生成時の URL。-JPROTOCOL_2=https のように上書きする。
+  このコマンドでの値: https
+
+-JHOST_2=files.example.com
+  ホスト（2 番目の接続先）。接続先のホスト名。ステージングへ切り替える例: -JHOST_2=stg.example.com
+  このコマンドでの値: files.example.com
+
+-JPORT_2=8443
+  ポート（2 番目の接続先）。ポート番号。空欄は URL にポートが無いという意味で、http は 80、https は 443 になる。番号を付ける例: -JPORT_2=8443
+  このコマンドでの値: 8443
+
+-JTHREADS=1
+  スレッド数。同時に動かすスレッド数（仮想ユーザー数）。既定は設定 threads（1）。
+  このコマンドでの値: 1
+
+-JRAMP_UP=1
+  ランプアップ（秒）。全スレッドが起動し終わるまでの秒数。既定は設定 ramp_up（1）。0 にすると同時に起動する。
+  このコマンドでの値: 1
+
+-JLOOPS=1
+  ループ回数。各スレッドが API 一覧を繰り返す回数。既定は設定 loops（1）。-1 は無限で、実行時間（DURATION）と併用する。
+  このコマンドでの値: 1
+
+-JCONNECT_TIMEOUT=10000
+  接続タイムアウト（ミリ秒）。TCP 接続が確立するまでの待ち時間。既定は設定 connect_timeout（10000）。
+  このコマンドでの値: 10000
+
+-JRESPONSE_TIMEOUT=30000
+  応答タイムアウト（ミリ秒）。応答を待ち続ける時間。既定は設定 response_timeout（30000）。
+  このコマンドでの値: 30000
+
+-JCSV_FILE=data/testdata.csv
+  CSV ファイル。CSV データ読込のファイル。相対パスは JMX のあるフォルダが基準。列は変数になる（USER_ID,PASSWORD,KEYWORD）。ファイルが無いとスレッドが停止する。
+  このコマンドでの値: data/testdata.csv
+
+-JEXCEL_FILE=data/testdata.xlsx
+  Excel ファイル。Excel データ読込のファイル（.xlsx）。相対パスは JMX のあるフォルダが基準。1 行目が変数名。
+  このコマンドでの値: data/testdata.xlsx
+
+-JEXCEL_SHEET=
+  Excel シート名。読み込むシート名。空欄は先頭のシート。
+  このコマンドでの値: （空欄）
+
+-JLOG_RESPONSE=error
+  結果ログの本文。api_result.log に本文をどこまで書くか。none = 書かない / error = 失敗したリクエストだけ / all = すべて。既定は error。
+  このコマンドでの値: error
+
+-JLOG_MAX_CHARS=1000
+  本文の最大文字数。結果ログに書くリクエスト本文・応答本文の最大文字数。既定は 1000。
+  このコマンドでの値: 1000
+
+-JTHROUGHPUT=600
+  目標スループット（件/分）。スループット制御が有効なとき、メイン処理全体で 1 分あたりこの件数になるよう待機する。既定は 600。スループット制御は無効（DISABLE）で生成されている。GUI で有効にするまで、この値を変えても実行には使われない。
+  このコマンドでの値: 600
+
+[この JMX では指定していないもの]
+- この JMX は実行時間（duration）を有効にしていない。-JDURATION を付けても終了時刻は変わらない。時間で止める場合は、設定 duration を記入して JMX を再生成する（loops は -1 を推奨）。
+
+===== 5. 結果の見方 =====
+- $RUN_DIR/report/index.html  HTML レポート
+- $RUN_DIR/result.jtl         全件の結果（CSV）
+- $RUN_DIR/jmeter.log         JMeter のログ
+- $RUN_DIR/api_result.log    1 リクエスト 1 行の結果ログ
+- $RUN_DIR/error_detail.xml  失敗したリクエストの送受信
+
+===== 6. 負荷試験のコマンド例 =====
+スレッド 10、ランプアップ 10 秒、ループ 100、ヒープ 2g。接続先などは上のコマンドと同じ既定値。
+----- ここから -----
+export JMETER_HOME=/opt/apache-jmeter-5.6.3
+export HEAP="-Xms2g -Xmx2g -XX:MaxMetaspaceSize=256m"
+RUN_DIR="result/sample-api_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$RUN_DIR"
+"$JMETER_HOME/bin/jmeter" \
+  -n \
+  -t \
+  "sample-api.jmx" \
+  -l \
+  "$RUN_DIR/result.jtl" \
+  -j \
+  "$RUN_DIR/jmeter.log" \
+  -e \
+  -o \
+  "$RUN_DIR/report" \
+  "-JRESULT_DIR=$RUN_DIR" \
+  -Jjmeter.save.saveservice.subresults=false \
+  -JPROTOCOL=http \
+  -JHOST=localhost \
+  -JPORT=8080 \
+  -JPROTOCOL_2=https \
+  -JHOST_2=files.example.com \
+  -JPORT_2=8443 \
+  -JTHREADS=10 \
+  -JRAMP_UP=10 \
+  -JLOOPS=100 \
+  -JCONNECT_TIMEOUT=10000 \
+  -JRESPONSE_TIMEOUT=30000 \
+  -JCSV_FILE=data/testdata.csv \
+  -JEXCEL_FILE=data/testdata.xlsx \
+  -JEXCEL_SHEET= \
+  -JLOG_RESPONSE=error \
+  -JLOG_MAX_CHARS=1000 \
+  -JTHROUGHPUT=600
+----- ここまで -----
+
+===== 7. サーバでの環境変数 =====
+export JAVA_HOME=/usr/lib/jvm/jre-17-openjdk
+export JMETER_HOME=/opt/apache-jmeter-5.6.3
+export PATH="$JMETER_HOME/bin:$JAVA_HOME/bin:$PATH"
+jmeter -v
+JAVA_HOME は Java 17 のフォルダに合わせる。JVM_ARGS で GC ログなどの追加引数を渡せる。
+
+===== 8. バックグラウンド実行とレポートの再生成 =====
+SSH を切っても続ける例（nohup）。スレッド 20、ランプアップ 20 秒、ループ 500、ヒープ 2g。
+----- ここから -----
+mkdir -p "$RUN_DIR"
+nohup env HEAP="-Xms2g -Xmx2g -XX:MaxMetaspaceSize=256m" \
+  "$JMETER_HOME/bin/jmeter" -n -t "sample-api.jmx" \
+  -l "$RUN_DIR/result.jtl" -j "$RUN_DIR/jmeter.log" -e -o "$RUN_DIR/report" \
+  "-JRESULT_DIR=$RUN_DIR" -Jjmeter.save.saveservice.subresults=false \
+  -JHOST=localhost -JTHREADS=20 -JRAMP_UP=20 -JLOOPS=500 \
+  > "$RUN_DIR/console.out" 2>&1 &
+echo "PID: $! / tail -f $RUN_DIR/jmeter.log"
+----- ここまで -----
+既存の JTL から HTML レポートだけ作り直す:
+"$JMETER_HOME/bin/jmeter" -g "$RUN_DIR/result.jtl" -o "$RUN_DIR/report_regen"
+
+===== 9. その他の jmeter オプション =====
+-f  既存のレポート出力先を削除して作り直す。
+-g JTL  HTML レポートの生成だけを行う。-o とセットで指定する。
+-G名前=値  分散実行のとき、全スレーブへ渡すプロパティ。
+-q ファイル  追加のプロパティファイルを読む。
+-D名前=値  Java のシステムプロパティ。
+-H ホスト -P ポート  プロキシ経由で送る。
+-Lカテゴリ=レベル  ログの詳しさ。例: -Lorg.apache.http=DEBUG

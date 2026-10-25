@@ -1,0 +1,13 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "port-api", "version": "1" },
+  "servers": [{ "url": "http://localhost:8080/v1" }],
+  "paths": {
+    "/ping": {
+      "get": {
+        "operationId": "ping",
+        "responses": { "200": { "description": "ok" } }
+      }
+    }
+  }
+}
